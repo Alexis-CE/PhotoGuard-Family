@@ -15,7 +15,8 @@ function download(blob: Blob, filename: string): void {
 }
 
 class Workspace {
-  section = $state<SectionId>('protect');
+  /** Siempre se arranca en Inicio: no se recuerda la última herramienta. */
+  section = $state<SectionId>('home');
   config = $state<ProtectionConfig>(structuredClone(DEFAULT_CONFIG));
 
   /** .raw: ImageBitmap/canvas no deben convertirse en proxies reactivos. */
@@ -26,6 +27,39 @@ class Workspace {
   notice = $state<string | null>(null);
 
   #loadToken = 0;
+
+  /** Hay trabajo en curso: no se debe recargar la app (p. ej. para actualizarla). */
+  get busy(): boolean {
+    return this.loading || this.exporting;
+  }
+
+  /**
+   * Navegación entre pantallas con historial, para que «Atrás» (Android) vuelva a Inicio.
+   * Pila máxima: [Inicio, herramienta]; entre herramientas se reemplaza la entrada.
+   */
+  initNavigation(): void {
+    // Un recargo SIEMPRE cae en Inicio, aunque el navegador conserve history.state.
+    history.replaceState({ section: 'home' }, '');
+    this.section = 'home';
+    window.addEventListener('popstate', (event) => {
+      const state = event.state as { section?: SectionId } | null;
+      this.section = state?.section ?? 'home';
+    });
+  }
+
+  go(next: SectionId): void {
+    const from = this.section;
+    if (next === from) return;
+    this.section = next;
+    const current = (history.state as { section?: SectionId } | null)?.section;
+    if (next === 'home') {
+      if (current && current !== 'home') history.back();
+    } else if (from === 'home') {
+      history.pushState({ section: next }, '');
+    } else {
+      history.replaceState({ section: next }, '');
+    }
+  }
 
   async importFile(file: File): Promise<void> {
     const token = ++this.#loadToken;

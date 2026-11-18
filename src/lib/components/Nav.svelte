@@ -1,18 +1,19 @@
 <script lang="ts">
   import { workspace } from '$lib/state/workspace.svelte';
-  import { SECTIONS } from '$lib/sections';
+  import { NAV_ITEMS } from '$lib/sections';
 </script>
 
 <nav aria-label="Secciones">
-  {#each SECTIONS as section (section.id)}
+  {#each NAV_ITEMS as section (section.id)}
     <button
       type="button"
       class:active={workspace.section === section.id}
       aria-current={workspace.section === section.id ? 'page' : undefined}
-      onclick={() => (workspace.section = section.id)}
+      onclick={() => workspace.go(section.id)}
     >
       <svg viewBox="0 0 24 24" aria-hidden="true">{@html section.icon}</svg>
-      <span class="label">{section.label}</span>
+      <span class="label long">{section.label}</span>
+      <span class="label short">{section.shortLabel}</span>
       {#if !section.ready}<small>pronto</small>{/if}
     </button>
   {/each}
@@ -69,6 +70,10 @@
     color: var(--accent);
   }
 
+  .short {
+    display: none;
+  }
+
   small {
     margin-left: auto;
     font-size: 11px;
@@ -83,7 +88,7 @@
       flex-direction: row;
       justify-content: space-around;
       gap: 0;
-      padding: 6px 6px calc(6px + var(--safe-bottom));
+      padding: 6px 4px calc(6px + var(--safe-bottom));
       border-right: 0;
       border-top: 1px solid var(--border);
       overflow: hidden;
@@ -103,7 +108,12 @@
       box-shadow: inset 0 3px 0 var(--accent);
     }
 
-    .label {
+    .long {
+      display: none;
+    }
+
+    .short {
+      display: block;
       max-width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;

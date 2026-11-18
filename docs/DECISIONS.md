@@ -55,3 +55,43 @@ propietario la autorice expresamente. La app no hace peticiones de red con datos
 
 ## Dependencias (solo desarrollo; el bundle final solo lleva Svelte)
 svelte, vite, @sveltejs/vite-plugin-svelte, typescript, svelte-check, vitest.
+
+---
+
+# Fase 2: PWA
+
+## Service Worker con `vite-plugin-pwa` (Workbox `generateSW`, modo `prompt`)
+Se eligió el plugin (permitido en el alcance) en lugar de escribir el SW a mano: genera el precache
+con hashes y gestiona el ciclo de vida. Compatible con Vite 8 (peer deps del paquete). Sin
+`skipWaiting`/`clientsClaim` automáticos: la versión nueva queda en espera hasta que el usuario acepta.
+
+## Registro propio
+`injectRegister: false`; el registro vive en `src/lib/services/pwa.svelte.ts` para controlar el flujo
+(aviso, posponer, confirmación, bloqueo si hay trabajo en curso). En desarrollo no se registra SW.
+
+## Privacidad de la caché
+Solo se precachea el «app shell». No hay `runtimeCaching`; las fotos nunca pasan por el SW.
+Los modelos futuros usarán una Cache aparte (`photoguard-models-v1`) que el SW no limpia.
+
+## Inicio como punto de entrada
+`workspace.section` arranca siempre en `home` y `initNavigation()` reemplaza `history.state` en cada
+carga (si no, el navegador restauraría la última herramienta al recargar). Pila de historial máxima
+`[Inicio, herramienta]` para que «Atrás» en Android vuelva a Inicio.
+
+## Instalación solo en móvil
+`beforeinstallprompt` se captura únicamente si la plataforma es Android/iOS (detección pura y testeada
+en `utils/platform.ts`). En escritorio no se promueve; el navegador puede ofrecer su propia opción.
+iOS no tiene API: se muestran instrucciones.
+
+## Iconos
+Generados sin dependencias (`scripts/make-icons.mjs`) con la misma geometría que `icon.svg`.
+`maskable` y `apple-touch-icon` van a sangre (sin esquinas transparentes).
+
+## Actualizar recarga la página
+Hoy el estado (foto abierta, ajustes) vive en memoria; por eso se pide confirmación si hay una foto y
+se bloquea mientras se importa/exporta. Cuando existan presets en IndexedDB, los ajustes persistirán.
+
+## Dependencias nuevas (solo desarrollo)
+vite-plugin-pwa, workbox-build, workbox-window, @types/node. `npm audit` marca 4 avisos moderados en la
+cadena `minimatch → glob → workbox-build`; son herramientas de build (no van al bundle) y hay 0 en
+dependencias de producción. No se aplicó `--force` (haría un downgrade incompatible).

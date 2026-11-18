@@ -11,6 +11,9 @@ el runtime de Svelte.
 | typescript | tipado | Apache-2.0 |
 | svelte-check | verificación de tipos | MIT |
 | vitest | pruebas | MIT |
+| vite-plugin-pwa | manifest + Service Worker (build) | MIT |
+| workbox-build / workbox-window | precache y registro del SW | MIT |
+| @types/node | tipos para vite.config.ts | MIT |
 
 \* Según lo conocido al escribir esto. Verificar en el campo `license` de cada paquete
 (`npm ls --all` / repositorio oficial) antes de publicar. Cada nueva dependencia debe registrarse

@@ -1,36 +1,54 @@
 <script lang="ts">
   import Nav from '$lib/components/Nav.svelte';
+  import UpdateBanner from '$lib/components/UpdateBanner.svelte';
+  import Home from './routes/Home.svelte';
   import Protect from './routes/Protect.svelte';
   import ComingSoon from './routes/ComingSoon.svelte';
   import { workspace } from '$lib/state/workspace.svelte';
-  import { SECTIONS } from '$lib/sections';
+  import { pwa } from '$lib/services/pwa.svelte';
+  import { findSection } from '$lib/sections';
 
-  const current = $derived(SECTIONS.find((s) => s.id === workspace.section) ?? SECTIONS[0]);
+  const current = $derived(findSection(workspace.section));
 </script>
 
 <div class="shell">
   <header class="topbar">
-    <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
-      <circle cx="32" cy="32" r="22" fill="none" stroke="currentColor" stroke-width="5" />
-      <circle cx="32" cy="32" r="9" fill="currentColor" />
-    </svg>
-    <h1>PhotoGuard <span>Family</span></h1>
-    <p class="privacy">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z" /></svg>
-      Tus fotos no salen de este dispositivo
-    </p>
+    <button type="button" class="brand" onclick={() => workspace.go('home')} aria-label="PhotoGuard Family: ir al inicio">
+      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="22" fill="none" stroke="currentColor" stroke-width="5" />
+        <circle cx="32" cy="32" r="9" fill="currentColor" />
+      </svg>
+      <h1>PhotoGuard <span>Family</span></h1>
+    </button>
+
+    <div class="status">
+      {#if !pwa.online}
+        <span class="chip" role="status">Sin conexión</span>
+      {/if}
+      {#if pwa.needRefresh && pwa.snoozed}
+        <button type="button" class="chip update" onclick={() => pwa.reopenUpdate()}>Actualización disponible</button>
+      {/if}
+      <p class="privacy">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z" /></svg>
+        Tus fotos no salen de este dispositivo
+      </p>
+    </div>
   </header>
 
   <Nav />
 
   <main class="main">
-    {#if current.id === 'protect'}
+    {#if current.id === 'home'}
+      <Home />
+    {:else if current.id === 'protect'}
       <Protect />
     {:else}
       <ComingSoon section={current} />
     {/if}
   </main>
 </div>
+
+<UpdateBanner />
 
 <style>
   .shell {
@@ -53,6 +71,16 @@
     border-bottom: 1px solid var(--border);
   }
 
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: inherit;
+  }
+
   .mark {
     width: 26px;
     height: 26px;
@@ -71,11 +99,31 @@
     font-weight: 450;
   }
 
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+  }
+
+  .chip {
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    background: transparent;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .chip.update {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
   .privacy {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-left: auto;
     font-size: 12.5px;
     color: var(--muted);
   }
