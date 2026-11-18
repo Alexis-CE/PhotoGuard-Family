@@ -51,15 +51,22 @@ describe('fitToArea', () => {
 });
 
 describe('buildOutputName', () => {
-  it('añade sufijo y ajusta la extensión al formato', () => {
-    expect(buildOutputName('vacaciones.HEIC.png', 'jpeg')).toBe('vacaciones.HEIC-protegida.jpg');
-    expect(buildOutputName('foto.webp', 'png')).toBe('foto-protegida.png');
+  const day = new Date(2026, 10, 18); // 18-nov-2026
+
+  it('genera un nombre corto y neutro con extensión según el formato', () => {
+    expect(buildOutputName('jpeg', day, () => 0)).toBe('pg-261118-000.jpg');
+    expect(buildOutputName('png', day, () => 0.999999)).toBe('pg-261118-zzz.png');
   });
 
-  it('sanea caracteres peligrosos y nombres vacíos', () => {
-    expect(buildOutputName('a/b:c*.jpg', 'jpeg')).toBe('a_b_c_-protegida.jpg');
-    expect(buildOutputName('.jpg', 'jpeg')).toBe('.jpg-protegida.jpg');
-    expect(buildOutputName('', 'png')).toBe('foto-protegida.png');
+  it('no depende del nombre del archivo original (no puede filtrar nada de él)', () => {
+    // La firma ya no recibe el nombre original: cualquier salida cumple el patrón.
+    expect(buildOutputName('jpeg')).toMatch(/^pg-\d{6}-[0-9a-z]{3}\.jpg$/);
+    expect(buildOutputName('png')).toMatch(/^pg-\d{6}-[0-9a-z]{3}\.png$/);
+  });
+
+  it('el sufijo aleatorio varía entre llamadas del mismo día', () => {
+    const names = new Set(Array.from({ length: 200 }, () => buildOutputName('jpeg', day)));
+    expect(names.size).toBeGreaterThan(150);
   });
 });
 

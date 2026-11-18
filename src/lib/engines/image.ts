@@ -141,7 +141,7 @@ export async function exportPhoto(photo: LoadedPhoto, config: ProtectionConfig):
     );
     return {
       blob,
-      filename: buildOutputName(photo.name, config.export.format),
+      filename: buildOutputName(config.export.format),
       width: size.width,
       height: size.height,
       downscaled: size.scaled

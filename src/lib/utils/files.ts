@@ -64,10 +64,19 @@ export function fitToArea(
   };
 }
 
-export function buildOutputName(originalName: string, format: 'jpeg' | 'png'): string {
-  const dot = originalName.lastIndexOf('.');
-  const stem = (dot > 0 ? originalName.slice(0, dot) : originalName)
-    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_')
-    .trim();
-  return `${stem || 'foto'}-protegida.${format === 'jpeg' ? 'jpg' : 'png'}`;
+/**
+ * Nombre de salida corto y neutro: `pg-AAMMDD-xxx.jpg`. No reutiliza el nombre del archivo original
+ * (que puede traer nombres de personas, de herramientas o rutas). El sufijo aleatorio de 3
+ * caracteres evita choques si se exportan varias fotos el mismo día.
+ */
+export function buildOutputName(
+  format: 'jpeg' | 'png',
+  now: Date = new Date(),
+  random: () => number = Math.random
+): string {
+  const yy = String(now.getFullYear()).slice(2);
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const tag = Math.floor(random() * 36 ** 3).toString(36).padStart(3, '0');
+  return `pg-${yy}${mm}${dd}-${tag}.${format === 'jpeg' ? 'jpg' : 'png'}`;
 }
