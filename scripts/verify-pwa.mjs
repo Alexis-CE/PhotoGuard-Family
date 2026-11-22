@@ -325,6 +325,49 @@ check('Confirmar elimina la copia (queda el original)', await waitFor(`![...docu
 await goTo('Inicio');
 check('Tras usar Presets, el editor sigue operativo (importar foto y vista previa)', await importPhoto());
 
+// ---------- Fase E: .jfif y validación por firma binaria ----------
+console.log('\n== E. Importación .jfif y validación binaria ==');
+await ev(`window.__b64 = (blob) => new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); });
+  window.__blobs = []; const o = URL.createObjectURL.bind(URL); URL.createObjectURL = (b) => { window.__blobs.push(b); return o(b); };
+  window.__names = []; const oc = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { window.__names.push(this.download); return oc.call(this); };
+  true`);
+const pickFile = (name, type, b64) => ev(`(async () => {
+  const u8 = Uint8Array.from(atob(${JSON.stringify(b64)}), (c) => c.charCodeAt(0));
+  const dt = new DataTransfer(); dt.items.add(new File([u8], ${JSON.stringify(name)}, { type: ${JSON.stringify(type)} }));
+  const input = document.querySelector('input[type=file]'); input.files = dt.files;
+  input.dispatchEvent(new Event('change', { bubbles: true })); return true;
+})()`);
+const fileLabel = `document.querySelector('.file strong')?.textContent`;
+const canvasB64 = (mime) => ev(`(async () => { const c = document.createElement('canvas'); c.width = 64; c.height = 48; const g = c.getContext('2d'); g.fillStyle = '#39c'; g.fillRect(0, 0, 64, 48); const b = await new Promise((r) => c.toBlob(r, ${JSON.stringify(mime)}, 0.9)); return window.__b64(b); })()`);
+
+check('El selector admite image/* y .jfif', (await ev(`document.querySelector('input[type=file]').accept`)) === 'image/*,.jfif');
+
+// JFIF real (JPEG con EXIF y orientación 6) con MIME vacío, como lo entrega Windows a veces.
+await pickFile('IMG_exif.jfif', '', Buffer.from(withExif).toString('base64'));
+check('JFIF con MIME vacío se importa y aplica la orientación (600 × 800)', await waitFor(`${fileLabel} === 'IMG_exif.jfif' && document.querySelector('.file span')?.textContent.includes('600 × 800')`, 10000));
+const outJfif = await exportNow();
+const postJfif = inspectJpeg(outJfif.bytes);
+const jfifName = await ev('window.__names.at(-1)');
+check('JFIF exportado: nombre pg-AAMMDD-xxx.jpg (nunca .jfif)', /^pg-\d{6}-[0-9a-z]{3}\.jpg$/.test(jfifName), String(jfifName));
+check('JFIF exportado: JPEG válido sin APP1/EXIF ni marcador de GPS', outJfif.type === 'image/jpeg' && postJfif.valid && postJfif.app1.length === 0 && !containsAscii(outJfif.bytes, 'PG-GPS-TEST'), `${postJfif.app1.length} APP1`);
+
+// Formatos que ya funcionaban (regresión)
+const okJpg = await canvasB64('image/jpeg');
+const okPng = await canvasB64('image/png');
+const okWebp = await canvasB64('image/webp');
+for (const [name, type, b64] of [['ok.jpg', 'image/jpeg', okJpg], ['ok.png', 'image/png', okPng], ['ok.webp', 'image/webp', okWebp], ['ok-sin-mime.jpg', '', okJpg]]) {
+  await pickFile(name, type, b64);
+  check(`Regresión: ${name} (MIME «${type}») sigue importándose`, await waitFor(`${fileLabel} === ${JSON.stringify(name)} && document.querySelector('.banner.error') === null`, 8000));
+}
+
+// Rechazos
+await pickFile('falsa.jpg', 'image/jpeg', okPng);
+check('PNG renombrado a .jpg se rechaza con un aviso claro', await waitFor(`document.querySelector('.banner.error')?.textContent.includes('su contenido es PNG')`, 5000));
+check('…y la foto anterior sigue abierta', (await ev(fileLabel)) === 'ok-sin-mime.jpg');
+await pickFile('texto.jfif', '', Buffer.from('hola mundo, esto no es una imagen').toString('base64'));
+check('Texto renombrado a .jfif se rechaza', await waitFor(`document.querySelector('.banner.error')?.textContent.includes('no es una imagen JPG, PNG o WEBP')`, 5000));
+await pickFile('chico.jfif', '', Buffer.from([0xff, 0xd8, 0xff, 0xe0]).toString('base64'));
+check('Archivo de 4 bytes se rechaza sin romper la app', await waitFor(`document.querySelector('.banner.error')?.textContent.includes('demasiado pequeño')`, 5000) && (await ev(fileLabel)) === 'ok-sin-mime.jpg');
 // ---------- Fase B: actualización ----------
 console.log('\n== B. Actualización (nueva versión desplegada) ==');
 await ev(`(async () => {

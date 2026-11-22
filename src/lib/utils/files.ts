@@ -1,7 +1,30 @@
 export type ImageKind = 'jpeg' | 'png' | 'webp';
 
-export const ACCEPTED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const;
-export const ACCEPT_ATTRIBUTE = '.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp';
+/** `.jfif` es un JPEG con contenedor JFIF: se decodifica igual que un .jpg. */
+export const ACCEPTED_EXTENSIONS = ['jpg', 'jpeg', 'jfif', 'png', 'webp'] as const;
+/** `image/*` por compatibilidad entre selectores; `.jfif` explícito porque algunos sistemas no lo asocian a imagen. */
+export const ACCEPT_ATTRIBUTE = 'image/*,.jfif';
+/** Bytes que se leen del inicio del archivo para comprobar su firma. */
+export const SNIFF_BYTES = 12;
+
+const EXTENSION_KIND: Readonly<Record<string, ImageKind>> = {
+  jpg: 'jpeg',
+  jpeg: 'jpeg',
+  jfif: 'jpeg',
+  png: 'png',
+  webp: 'webp'
+};
+
+const MIME_KIND: Readonly<Record<string, ImageKind>> = {
+  'image/jpeg': 'jpeg',
+  'image/pjpeg': 'jpeg',
+  'image/jfif': 'jpeg',
+  'image/png': 'png',
+  'image/webp': 'webp'
+};
+
+const KIND_LABEL: Readonly<Record<ImageKind, string>> = { jpeg: 'JPEG', png: 'PNG', webp: 'WEBP' };
+const KIND_EXTENSION: Readonly<Record<ImageKind, string>> = { jpeg: '.jpg', png: '.png', webp: '.webp' };
 export const MAX_FILE_BYTES = 80 * 1024 * 1024;
 
 /**
@@ -31,6 +54,37 @@ export function sniffImageType(bytes: Uint8Array): ImageKind | null {
   return null;
 }
 
+/** Formato que la extensión del nombre dice que es (null si no es una extensión admitida). */
+export function kindFromExtension(name: string): ImageKind | null {
+  return EXTENSION_KIND[extensionOf(name)] ?? null;
+}
+
+/**
+ * Formato que declara el MIME (null si está vacío, es genérico como application/octet-stream o no es
+ * uno de los admitidos). Un MIME desconocido NO es motivo de rechazo: lo decide la firma binaria.
+ */
+export function kindFromMime(type: string): ImageKind | null {
+  return MIME_KIND[type.split(';')[0].trim().toLowerCase()] ?? null;
+}
+
+/**
+ * Comprueba que el contenido real coincide con el formato esperado. La extensión (y el MIME, si es
+ * reconocible) solo dicen qué se ESPERA; la firma binaria de los primeros `SNIFF_BYTES` bytes es la
+ * que manda. Devuelve un mensaje para el usuario o null si todo coincide.
+ */
+export function verifyImageContent(file: { name: string; type: string }, head: Uint8Array): string | null {
+  if (head.length < SNIFF_BYTES) return 'El archivo es demasiado pequeño para ser una imagen válida.';
+  const actual = sniffImageType(head);
+  if (!actual) return 'El contenido no es una imagen JPG, PNG o WEBP válida (aunque la extensión lo parezca).';
+
+  const byName = kindFromExtension(file.name);
+  if (!byName) return 'Formato no compatible. Usa JPG, JFIF, PNG o WEBP.';
+  const claimed = [byName, kindFromMime(file.type)].find((kind) => kind !== null && kind !== actual);
+  if (claimed) {
+    return `El archivo se presenta como ${KIND_LABEL[claimed]}, pero su contenido es ${KIND_LABEL[actual]}. Cámbiale la extensión a ${KIND_EXTENSION[actual]} e inténtalo de nuevo.`;
+  }
+  return null;
+}
 function extensionOf(name: string): string {
   const dot = name.lastIndexOf('.');
   return dot === -1 ? '' : name.slice(dot + 1).toLowerCase();
@@ -44,7 +98,7 @@ export function validateFileMeta(file: { name: string; size: number }): string |
   }
   const ext = extensionOf(file.name);
   if (!(ACCEPTED_EXTENSIONS as readonly string[]).includes(ext)) {
-    return `Formato no compatible${ext ? ` (.${ext})` : ''}. Usa JPG, PNG o WEBP.`;
+    return `Formato no compatible${ext ? ` (.${ext})` : ''}. Usa JPG, JFIF, PNG o WEBP.`;
   }
   return null;
 }

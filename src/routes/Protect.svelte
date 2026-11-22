@@ -81,7 +81,7 @@
             <path d="M21 16l-5-5-8 8" />
           </svg>
           <h2>Abre una fotografía</h2>
-          <p>Arrástrala aquí o elígela de tu dispositivo.<br />JPG, PNG o WEBP · se procesa sin salir de este equipo.</p>
+          <p>Arrástrala aquí o elígela de tu dispositivo.<br />JPG, JFIF, PNG o WEBP · se procesa sin salir de este equipo.</p>
           <button type="button" class="btn primary" onclick={() => picker?.open()}>Elegir foto</button>
         </div>
       {/if}

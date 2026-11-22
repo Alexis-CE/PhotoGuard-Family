@@ -3,8 +3,9 @@ import {
   buildOutputName,
   fitToArea,
   MAX_CANVAS_PIXELS,
-  sniffImageType,
-  validateFileMeta
+  SNIFF_BYTES,
+  validateFileMeta,
+  verifyImageContent
 } from '$lib/utils/files';
 import { canvasToBlob, createCanvas, getContext, releaseCanvas, type Canvas2D } from './canvas';
 import { ensureFontsLoaded } from './fontLoader';
@@ -73,10 +74,10 @@ export async function loadPhoto(file: File): Promise<LoadedPhoto> {
   const metaError = validateFileMeta(file);
   if (metaError) throw new ImageImportError(metaError);
 
-  const head = new Uint8Array(await file.slice(0, 12).arrayBuffer());
-  if (!sniffImageType(head)) {
-    throw new ImageImportError('El contenido no es una imagen JPG, PNG o WEBP válida (aunque la extensión lo parezca).');
-  }
+  // Solo se leen los primeros bytes; el File ORIGINAL es el que llega al decodificador.
+  const head = new Uint8Array(await file.slice(0, SNIFF_BYTES).arrayBuffer());
+  const contentError = verifyImageContent(file, head);
+  if (contentError) throw new ImageImportError(contentError);
 
   let decoded: Decoded;
   try {
