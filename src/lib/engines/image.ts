@@ -7,6 +7,7 @@ import {
   validateFileMeta
 } from '$lib/utils/files';
 import { canvasToBlob, createCanvas, getContext, releaseCanvas, type Canvas2D } from './canvas';
+import { ensureFontsLoaded } from './fontLoader';
 import { renderComposition } from './render';
 
 /** Lado largo del búfer de vista previa. La preview se compone aquí, no sobre la foto completa. */
@@ -126,6 +127,8 @@ export interface ExportResult {
 
 /** Renderiza a resolución completa con la misma función que la vista previa y codifica el archivo. */
 export async function exportPhoto(photo: LoadedPhoto, config: ProtectionConfig): Promise<ExportResult> {
+  // Nunca exportar con una tipografía sustituta: esperar (o fallar) antes de dibujar.
+  await ensureFontsLoaded(config);
   const size = fitToArea(photo.width, photo.height, MAX_CANVAS_PIXELS);
   const canvas = createCanvas(size.width, size.height);
   try {

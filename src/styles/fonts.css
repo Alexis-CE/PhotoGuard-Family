@@ -1,0 +1,67 @@
+/*
+ * Tipografías locales (WOFF2, subset latino, pesos 400 y 700). Ver LICENSES/FONTS.md.
+ * Rutas absolutas a /public: Vite las reescribe respetando `base` (relativo), así funcionan
+ * bajo cualquier ruta de despliegue. Sin Google Fonts, sin CDN, sin solicitudes externas.
+ *
+ * font-display: block → sin texto sustituto parpadeando; el render además espera con
+ * document.fonts.load() (src/lib/engines/fontLoader.ts) antes de dibujar o exportar.
+ */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/inter/inter-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('/fonts/inter/inter-latin-700-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/roboto/roboto-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('/fonts/roboto/roboto-latin-700-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/montserrat/montserrat-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('/fonts/montserrat/montserrat-latin-700-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/source-sans-3/source-sans-3-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url('/fonts/source-sans-3/source-sans-3-latin-700-normal.woff2') format('woff2');
+}

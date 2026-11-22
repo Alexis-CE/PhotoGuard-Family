@@ -11,8 +11,10 @@ export type ExportFormat = 'jpeg' | 'png';
 
 export interface TextStyle {
   text: string;
-  /** id de FONT_OPTIONS */
+  /** id de FONT_OPTIONS (estable): inter | roboto | montserrat | source-sans-3 */
   fontId: string;
+  /** Negrita real (peso 700 de la familia); false = 400 */
+  bold: boolean;
   /** % del lado corto de la imagen */
   size: number;
   color: string;
@@ -64,7 +66,8 @@ export const DEFAULT_CONFIG: ProtectionConfig = {
   mode: 'both',
   pattern: {
     text: '© Mi Familia',
-    fontId: 'sans',
+    fontId: 'inter',
+    bold: false,
     size: 4,
     color: '#ffffff',
     thickness: 2,
@@ -77,10 +80,11 @@ export const DEFAULT_CONFIG: ProtectionConfig = {
   emblem: {
     kind: 'text',
     text: 'Mi Familia',
-    fontId: 'serif',
+    fontId: 'montserrat',
+    bold: true,
     size: 12,
     color: '#ffffff',
-    thickness: 2,
+    thickness: 0,
     opacity: 55,
     rotation: 0,
     x: 50,

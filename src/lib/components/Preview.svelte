@@ -1,5 +1,6 @@
 <script lang="ts">
   import { workspace as ws } from '$lib/state/workspace.svelte';
+  import { ensureFontsLoaded } from '$lib/engines/fontLoader';
   import { renderComposition } from '$lib/engines/render';
 
   let canvas: HTMLCanvasElement | undefined = $state();
@@ -12,8 +13,11 @@
     const el = canvas;
     if (!photo || !el) return;
 
-    const frame = requestAnimationFrame(() => {
+    let cancelled = false;
+    const frame = requestAnimationFrame(async () => {
       try {
+        await ensureFontsLoaded(config);
+        if (cancelled) return;
         if (el.width !== photo.previewWidth || el.height !== photo.previewHeight) {
           el.width = photo.previewWidth;
           el.height = photo.previewHeight;
@@ -31,7 +35,10 @@
         renderFailed = true;
       }
     });
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
   });
 </script>
 

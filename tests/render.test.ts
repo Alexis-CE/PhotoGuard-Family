@@ -102,3 +102,17 @@ describe('renderComposition', () => {
     expect(() => renderComposition(t.ctx, {} as CanvasImageSource, 0, 100, DEFAULT_CONFIG)).toThrow();
   });
 });
+
+describe('renderComposition · tipografías', () => {
+  it('usa peso 700 solo con negrita y la familia elegida, en patrón y emblema', () => {
+    const config = cfg({ mode: 'both' });
+    config.pattern.fontId = 'roboto';
+    config.pattern.bold = false;
+    config.emblem.fontId = 'source-sans-3';
+    config.emblem.bold = true;
+    const r = setup(config);
+    const fonts = r.layer.sets.filter((s) => s.prop === 'font').map((s) => String(s.value));
+    expect(fonts[0]).toMatch(/^400 [\d.]+px "Roboto"/);
+    expect(fonts[1]).toMatch(/^700 [\d.]+px "Source Sans 3"/);
+  });
+});

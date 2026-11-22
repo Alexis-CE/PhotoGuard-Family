@@ -1,5 +1,6 @@
 import { DEFAULT_CONFIG, type ProtectionConfig } from '$lib/types/watermark';
 import { exportPhoto, ImageImportError, loadPhoto, type LoadedPhoto } from '$lib/engines/image';
+import { FontLoadError } from '$lib/engines/fontLoader';
 import type { SectionId } from '$lib/sections';
 
 function download(blob: Blob, filename: string): void {
@@ -104,7 +105,10 @@ class Workspace {
       }
     } catch (error) {
       console.error(error);
-      this.error = 'No se pudo exportar la imagen. Prueba con otro formato o una foto más pequeña.';
+      this.error =
+        error instanceof FontLoadError
+          ? `La exportación se canceló: ${error.message}`
+          : 'No se pudo exportar la imagen. Prueba con otro formato o una foto más pequeña.';
     } finally {
       this.exporting = false;
     }

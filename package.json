@@ -12,9 +12,14 @@
     "test": "vitest run",
     "icons": "node scripts/make-icons.mjs",
     "serve:pages": "node scripts/serve-subpath.mjs",
-    "verify:pwa": "npm run build && node scripts/verify-pwa.mjs"
+    "verify:pwa": "npm run build && node scripts/verify-pwa.mjs",
+    "fonts": "node scripts/sync-fonts.mjs"
   },
   "devDependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/montserrat": "^5.3.0",
+    "@fontsource/roboto": "^5.3.0",
+    "@fontsource/source-sans-3": "^5.3.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@types/node": "^26.6.6",
     "svelte": "^5.57.3",

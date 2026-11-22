@@ -29,6 +29,8 @@
     </div>
   </div>
 
+  <label class="check"><input type="checkbox" bind:checked={style.bold} /> Negrita</label>
+
   <Slider label="Tamaño" bind:value={style.size} min={1} max={30} step={0.5} unit="%" />
   <Slider label="Grosor" bind:value={style.thickness} min={0} max={12} step={0.5} unit="%" />
   <Slider label="Opacidad" bind:value={style.opacity} min={1} max={100} unit="%" />
@@ -62,5 +64,12 @@
   label {
     font-size: 13px;
     color: var(--muted);
+  }
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text);
   }
 </style>

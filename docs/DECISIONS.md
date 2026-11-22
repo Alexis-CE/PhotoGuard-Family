@@ -26,8 +26,8 @@ Hay medio paso de desfase para que el centro quede en un hueco y no choque con e
 ## EXIF
 `createImageBitmap(file, { imageOrientation: 'from-image' })`; si el navegador no lo soporta,
 se decodifica con `<img>`, que aplica EXIF por defecto. Las dimensiones ya vienen orientadas.
-El canvas no copia metadatos: la exportación **no conserva EXIF ni GPS** (comportamiento deseado
-para privacidad; se volverá una opción explícita).
+El canvas no copia metadatos: la exportación **siempre elimina EXIF** (incluido GPS), sin opción para
+conservarlo. Ver «Privacidad: eliminación de EXIF» más abajo.
 
 ## Rendimiento y memoria
 - La vista previa trabaja sobre un búfer reducido (lado largo ≤ 1600 px), no sobre la foto completa.
@@ -41,8 +41,8 @@ para privacidad; se volverá una opción explícita).
 Extensión + tamaño (≤ 80 MB) + firma binaria (JPEG/PNG/WEBP). No se confía solo en la extensión.
 
 ## Fuentes
-Fuentes del sistema por ahora. Un mismo texto puede verse distinto entre dispositivos. Antes de
-los presets se empaquetarán fuentes con licencia libre (OFL) en `public/fonts`.
+Cuatro familias locales (Inter, Roboto, Montserrat, Source Sans 3). Ver «Fase 3 · Paso 1» más abajo y
+`LICENSES/FONTS.md`.
 
 ## Emblemas de imagen (preparado, no implementado)
 `EmblemConfig` es un tipo con `kind`. El render despacha por `kind` con comprobación exhaustiva,
@@ -95,3 +95,36 @@ se bloquea mientras se importa/exporta. Cuando existan presets en IndexedDB, los
 vite-plugin-pwa, workbox-build, workbox-window, @types/node. `npm audit` marca 4 avisos moderados en la
 cadena `minimatch → glob → workbox-build`; son herramientas de build (no van al bundle) y hay 0 en
 dependencias de producción. No se aplicó `--force` (haría un downgrade incompatible).
+
+
+---
+
+# Fase 3 · Paso 1: tipografías locales y privacidad EXIF
+
+## Tipografías
+- Cuatro familias, ids estables: `inter`, `roboto`, `montserrat`, `source-sans-3`. Pesos 400 y 700 (WOFF2,
+  subset latino). Reemplazan a las seis fuentes del sistema (aún no había presets guardados, no hubo migración).
+- Origen: `@fontsource/*` (devDependencies) → `npm run fonts` copia a `public/fonts` y las licencias a
+  `LICENSES/fonts`. Los archivos se commitean; la app no depende de la red. Detalle y licencias verificadas en
+  `LICENSES/FONTS.md`.
+- Peso: `TextStyle.bold` (casilla «Negrita») → 700; si no, 400. Sin esto el peso 700 no se podría usar.
+  «Grosor» sigue siendo un contorno adicional del mismo color.
+- Carga: `ensureFontsLoaded()` (`engines/fontLoader.ts`) espera `document.fonts.load()` antes de dibujar la
+  vista previa y antes de exportar; si falla, la exportación se cancela (no hay fuente sustituta silenciosa).
+- Offline: las 8 WOFF2 están en el precache del Service Worker (verificado con la app sin red).
+- Límite: subset latino; otros alfabetos caen a la fuente genérica del dispositivo.
+
+## Privacidad: eliminación de EXIF
+- **PhotoGuard siempre elimina los metadatos EXIF al exportar** (incluidos los de GPS). **No existe opción para
+  conservarlos** y no se añadirá.
+- Cómo: la foto se decodifica aplicando su orientación y la exportación dibuja en un canvas nuevo, que se
+  codifica como JPEG/PNG sin copiar metadatos del original.
+- Verificación real (`npm run verify:pwa`, Chrome 157): se importa un JPEG sintético con segmento APP1/Exif
+  (orientación 6 y un marcador tipo GPS), se exporta por el flujo normal de la app y se inspeccionan los bytes:
+  el resultado es un JPEG válido (SOI → SOS → EOI), **sin ningún segmento APP1**, sin la cadena «Exif» ni el
+  marcador, y con la rotación ya aplicada a los píxeles (600×800). `tests/exif.test.ts` comprueba además que el
+  inspector sí detecta un APP1 inyectado (para que la prueba pueda fallar).
+- **Alcance de lo comprobado:** solo APP1 (Exif/XMP) en JPEG y los chunks `eXIf`/`tEXt`/`iTXt`/`zTXt` en PNG,
+  con el codificador de Chrome. El JPEG exportado conserva segmentos APP0 (JFIF) y APP2 (probablemente el perfil
+  de color; no se decodificó). **No se afirma que se eliminen todos los metadatos posibles**, ni se ha verificado
+  el comportamiento de los codificadores de Safari o Firefox.

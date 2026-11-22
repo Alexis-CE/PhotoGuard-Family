@@ -1,4 +1,5 @@
 import { mount } from 'svelte';
+import './styles/fonts.css';
 import './styles/global.css';
 import App from './App.svelte';
 import { workspace } from '$lib/state/workspace.svelte';

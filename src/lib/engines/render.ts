@@ -1,6 +1,6 @@
 import type { EmblemConfig, PatternConfig, ProtectionConfig, TextStyle } from '$lib/types/watermark';
 import { createCanvas, getContext, releaseCanvas, type Canvas2D, type Ctx2D } from './canvas';
-import { resolveFontStack } from './fonts';
+import { fontWeightFor, resolveFontStack } from './fonts';
 import { patternCells } from './layout';
 
 export interface RenderOptions {
@@ -81,7 +81,7 @@ function fontPixels(style: TextStyle, width: number, height: number): number {
 }
 
 function prepareText(ctx: Ctx2D, style: TextStyle, fontPx: number): void {
-  ctx.font = `${fontPx}px ${resolveFontStack(style.fontId)}`;
+  ctx.font = `${fontWeightFor(style.bold)} ${fontPx}px ${resolveFontStack(style.fontId)}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = style.color;

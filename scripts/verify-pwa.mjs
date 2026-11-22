@@ -7,6 +7,7 @@ import { spawn, execSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { buildJpegWithExif, containsAscii, inspectJpeg, listPngChunks } from './lib/jpeg.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const PORT = 4180;
@@ -27,6 +28,8 @@ const check = (name, ok, detail = '') => {
   console.log(`${ok ? '✓' : '✗'} ${name}${detail ? ` — ${detail}` : ''}`);
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const FAMILIES = { inter: 'Inter', roboto: 'Roboto', montserrat: 'Montserrat', 'source-sans-3': 'Source Sans 3' };
+const FONT_SPECS = Object.values(FAMILIES).flatMap((fam) => [400, 700].map((w) => `${w} 16px "${fam}"`));
 
 const server = spawn(process.execPath, [join(ROOT, 'scripts', 'serve-subpath.mjs'), String(PORT)], { stdio: 'ignore' });
 const profile = mkdtempSync(join(tmpdir(), 'pg-verify-'));
@@ -122,6 +125,7 @@ check('Sin promoción de instalación en escritorio', (await ev(`document.queryS
 
 const precache = await ev(`caches.keys().then(async ks => { const k = ks.find(x => x.includes('precache')); return k ? (await (await caches.open(k)).keys()).map(r => new URL(r.url).pathname) : []; })`);
 check('Precache incluye HTML, JS, CSS e iconos', ['index.html', '.js', '.css', 'icon-192.png'].every((p) => precache.some((u) => u.includes(p))), `${precache.length} entradas`);
+check('Precache incluye las 8 fuentes WOFF2 (offline)', precache.filter((u) => u.endsWith('.woff2')).length === 8, `${precache.filter((u) => u.endsWith('.woff2')).length} WOFF2`);
 
 await reload();
 check('Tras recargar, la página está controlada por el SW', await waitFor('navigator.serviceWorker.controller !== null'));
@@ -130,6 +134,8 @@ await reload();
 const offlineCards = await ev(`document.querySelectorAll('.card').length`);
 check('OFFLINE: la app carga y muestra Inicio', offlineCards === 5, `${offlineCards} tarjetas`);
 check('OFFLINE: se muestra el aviso «Sin conexión»', await waitFor(`document.querySelector('.chip')?.textContent.includes('Sin conexión')`, 3000));
+const offlineFonts = await ev(`Promise.all(${JSON.stringify(FONT_SPECS)}.map((s) => document.fonts.load(s).then((f) => f.length)))`);
+check('OFFLINE: las 4 familias × 2 pesos se cargan desde la caché', offlineFonts.length === 8 && offlineFonts.every((n) => n > 0), JSON.stringify(offlineFonts));
 await send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
 await reload();
 
@@ -172,6 +178,96 @@ const exp = await ev(`(async () => {
 })()`);
 check('Exportación: JPEG a la resolución original', exp.type === 'image/jpeg' && exp.w === 800 && exp.h === 600, JSON.stringify(exp));
 check('Exportación: la marca de agua modifica píxeles (no es la foto sin tocar)', exp.diffPct > 0.5, `${exp.diffPct}% de píxeles distintos`);
+
+// ---------- Fase C: tipografías locales y eliminación de EXIF ----------
+console.log('\n== C. Tipografías locales y eliminación de EXIF ==');
+await ev(`window.__b64 = (blob) => new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); }); window.__imgs = {}; true`);
+
+const exportNow = async () => {
+  await ev('window.__blobs.length = 0; true');
+  await ev(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Exportar').click()`);
+  if (!(await waitFor('window.__blobs.length > 0', 20000))) throw new Error('La exportación no generó archivo');
+  const b64 = await ev('window.__b64(window.__blobs[0])');
+  const meta = await ev(`(async () => { const bm = await createImageBitmap(window.__blobs[0]); return { type: window.__blobs[0].type, w: bm.width, h: bm.height }; })()`);
+  return { bytes: Buffer.from(b64, 'base64'), ...meta };
+};
+
+// 1) EXIF: JPEG sintético con APP1/Exif (GPS-marcador + orientación 6) por el flujo REAL de la app
+const baseB64 = await ev(`(async () => {
+  const c = document.createElement('canvas'); c.width = 800; c.height = 600;
+  const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 800, 600);
+  gr.addColorStop(0, '#c63'); gr.addColorStop(1, '#39c'); g.fillStyle = gr; g.fillRect(0, 0, 800, 600);
+  g.fillStyle = '#fff'; g.fillRect(40, 40, 120, 60);
+  const b = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.95));
+  return window.__b64(b);
+})()`);
+const withExif = buildJpegWithExif(Buffer.from(baseB64, 'base64'), { orientation: 6, marker: 'PG-GPS-TEST-19.4326N' });
+const pre = inspectJpeg(withExif);
+check('Entrada sintética: JPEG con APP1/Exif (orientación 6 y marcador de GPS de prueba)', pre.valid && pre.app1.length === 1 && pre.app1[0].kind === 'exif' && containsAscii(withExif, 'PG-GPS-TEST'), pre.segments.map((s) => s.name).join(','));
+await ev(`(async () => {
+  const u8 = Uint8Array.from(atob(${JSON.stringify(Buffer.from(withExif).toString('base64'))}), (c) => c.charCodeAt(0));
+  const dt = new DataTransfer(); dt.items.add(new File([u8], 'IMG_exif.jpg', { type: 'image/jpeg' }));
+  const input = document.querySelector('input[type=file]'); input.files = dt.files;
+  input.dispatchEvent(new Event('change', { bubbles: true })); return true;
+})()`);
+check('Importar el JPEG con EXIF aplica la orientación (600 × 800)', await waitFor(`document.querySelector('.file strong')?.textContent === 'IMG_exif.jpg' && document.querySelector('.file span')?.textContent.includes('600 × 800')`, 10000));
+
+const outJ = await exportNow();
+const post = inspectJpeg(outJ.bytes);
+console.log(`  evidencia: segmentos del JPEG exportado = [${post.segments.map((s) => s.name).join(', ')}], bytes iniciales ${outJ.bytes.subarray(0, 4).toString('hex')}`);
+check('EXIF: el JPEG exportado es válido (SOI → SOS → EOI)', outJ.type === 'image/jpeg' && post.valid);
+check('EXIF: NO contiene ningún segmento APP1 (Exif/XMP)', post.app1.length === 0, `${post.app1.length} APP1`);
+check('EXIF: no queda la cadena «Exif» ni el marcador de GPS de prueba', !post.hasExifString && !containsAscii(outJ.bytes, 'PG-GPS-TEST'));
+check('EXIF: la orientación quedó aplicada a los píxeles (600×800), sin etiqueta residual', outJ.w === 600 && outJ.h === 800, `${outJ.w}×${outJ.h}`);
+
+await ev(`[...document.querySelectorAll('.segmented label')].find((l) => l.textContent.trim() === 'PNG').click()`);
+await sleep(300);
+const outP = await exportNow();
+const pngChunks = listPngChunks(outP.bytes);
+check('PNG exportado: sin chunks eXIf/tEXt/iTXt/zTXt (solo se comprobó esto)', outP.type === 'image/png' && !pngChunks.some((c) => ['eXIf', 'tEXt', 'iTXt', 'zTXt'].includes(c)), `chunks distintos: ${[...new Set(pngChunks)].join(', ')}`);
+await ev(`[...document.querySelectorAll('.segmented label')].find((l) => l.textContent.trim() === 'JPEG').click()`);
+await sleep(300);
+
+// 2) Tipografías: cada familia y peso se usa de verdad, y vista previa = exportación
+const setAll = (id, bold) => ev(`(() => {
+  for (const s of document.querySelectorAll('select')) { s.value = ${JSON.stringify(id)}; s.dispatchEvent(new Event('change', { bubbles: true })); }
+  for (const c of document.querySelectorAll('input[type=checkbox]')) { if (c.checked !== ${bold}) c.click(); }
+  return document.querySelectorAll('select').length;
+})()`);
+const pairDiff = (k1, k2) => ev(`(() => { const a = window.__imgs[${JSON.stringify(k1)}], b = window.__imgs[${JSON.stringify(k2)}]; let n = 0; for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) > 24 || Math.abs(a[i + 1] - b[i + 1]) > 24 || Math.abs(a[i + 2] - b[i + 2]) > 24) n++; return +(100 * n / (a.length / 4)).toFixed(2); })()`);
+let worstPreview = 0;
+let sizeMismatch = false;
+for (const bold of [false, true]) {
+  for (const id of Object.keys(FAMILIES)) {
+    await setAll(id, bold);
+    await sleep(700);
+    await exportNow();
+    const d = await ev(`(async () => {
+      const bm = await createImageBitmap(window.__blobs[0]);
+      const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height;
+      const g = c.getContext('2d'); g.drawImage(bm, 0, 0);
+      const a = g.getImageData(0, 0, c.width, c.height).data;
+      window.__imgs[${JSON.stringify(`${id}-${bold}`)}] = a;
+      const pv = document.querySelector('.frame canvas');
+      if (pv.width !== c.width || pv.height !== c.height) return { mismatch: true };
+      const b = pv.getContext('2d').getImageData(0, 0, pv.width, pv.height).data;
+      let sum = 0; for (let i = 0; i < a.length; i += 4) sum += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
+      return { mean: sum / ((a.length / 4) * 3) };
+    })()`);
+    if (d.mismatch) sizeMismatch = true; else worstPreview = Math.max(worstPreview, d.mean);
+  }
+}
+check('Vista previa = exportación (mismo tamaño y diferencia media < 4/255 en las 8 combinaciones)', !sizeMismatch && worstPreview < 4, `peor diferencia media: ${worstPreview.toFixed(2)}`);
+const famDiffs = {};
+for (const id of Object.keys(FAMILIES).slice(1)) famDiffs[id] = await pairDiff('inter-false', `${id}-false`);
+check('Cada familia produce una exportación distinta de Inter (no hay fuente sustituta)', Object.values(famDiffs).every((v) => v > 0.2), JSON.stringify(famDiffs));
+const boldDiffs = {};
+for (const id of Object.keys(FAMILIES)) boldDiffs[id] = await pairDiff(`${id}-false`, `${id}-true`);
+check('La negrita (700) cambia el resultado en las 4 familias', Object.values(boldDiffs).every((v) => v > 0.1), JSON.stringify(boldDiffs));
+const loadedFaces = await ev(`[...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family.replace(/"/g, '') + '|' + f.weight)`);
+const expectedFaces = Object.values(FAMILIES).flatMap((fam) => ['400', '700'].map((w) => `${fam}|${w}`));
+check('Las 8 caras locales (4 familias × 400/700) quedan cargadas en document.fonts', expectedFaces.every((x) => loadedFaces.includes(x)), `${loadedFaces.length} cargadas`);
+await ev(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Restablecer valores').click()`);
 
 // ---------- Fase B: actualización ----------
 console.log('\n== B. Actualización (nueva versión desplegada) ==');

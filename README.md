@@ -5,6 +5,8 @@ fotos se procesan en el dispositivo y no se envían a ningún servidor. Sin cuen
 
 - **Android / iOS:** instalable como app (PWA).
 - **Windows / Linux / macOS:** se usa en el navegador (sin app nativa).
+- **Privacidad:** al exportar siempre se eliminan los metadatos EXIF (incluido GPS), sin opción para conservarlos.
+- **Tipografías:** Inter, Roboto, Montserrat y Source Sans 3, locales y sin conexión ([licencias](LICENSES/FONTS.md)).
 
 ## Estado
 
@@ -28,6 +30,7 @@ npm run preview      # sirve dist/ para probar la PWA
 npm run serve:pages  # sirve dist/ bajo /photoguard-family/ (simula GitHub Pages)
 npm run verify:pwa   # build + verificación en un Chrome real (instalabilidad, offline, actualizaciones)
 npm run icons        # regenera los iconos PNG (public/icons)
+npm run fonts        # re-copia las fuentes WOFF2 y sus licencias desde @fontsource (public/fonts)
 ```
 
 Requiere Node 20.19+ o 22.12+.
@@ -42,7 +45,7 @@ cualquier nombre de repo. El workflow `.github/workflows/deploy.yml` compila y p
 
 - [docs/PWA.md](docs/PWA.md): instalación por plataforma, offline, actualizaciones, limitaciones y compatibilidad.
 - [docs/DECISIONS.md](docs/DECISIONS.md): decisiones técnicas.
-- [LICENSES/](LICENSES/README.md): licencias de dependencias.
+- [LICENSES/](LICENSES/README.md): licencias de dependencias; [LICENSES/FONTS.md](LICENSES/FONTS.md): tipografías.
 
 ## Estructura
 
