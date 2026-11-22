@@ -3,6 +3,7 @@
   import UpdateBanner from '$lib/components/UpdateBanner.svelte';
   import Home from './routes/Home.svelte';
   import Protect from './routes/Protect.svelte';
+  import Presets from './routes/Presets.svelte';
   import ComingSoon from './routes/ComingSoon.svelte';
   import { workspace } from '$lib/state/workspace.svelte';
   import { pwa } from '$lib/services/pwa.svelte';
@@ -42,6 +43,8 @@
       <Home />
     {:else if current.id === 'protect'}
       <Protect />
+    {:else if current.id === 'presets'}
+      <Presets />
     {:else}
       <ComingSoon section={current} />
     {/if}

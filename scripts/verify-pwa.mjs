@@ -120,7 +120,8 @@ check('apple-touch-icon carga (iOS)', apple === 200, String(apple));
 
 const cards = await ev(`[...document.querySelectorAll('.card')].map(c => c.querySelector('.title').textContent + ' | ' + c.querySelector('.status').textContent.trim())`);
 check('Inicio muestra las 5 herramientas', cards.length === 5, JSON.stringify(cards));
-check('Solo Proteger figura «Disponible»', cards.filter((c) => c.endsWith('Disponible')).length === 1 && cards[0].startsWith('Proteger'));
+const ready = cards.filter((c) => c.endsWith('Disponible')).map((c) => c.split(' | ')[0]);
+check('Solo Proteger y Presets figuran «Disponible»', ready.length === 2 && ready.includes('Proteger') && ready.includes('Presets'), JSON.stringify(ready));
 check('Sin promoción de instalación en escritorio', (await ev(`document.querySelector('.install')`)) === null);
 
 const precache = await ev(`caches.keys().then(async ks => { const k = ks.find(x => x.includes('precache')); return k ? (await (await caches.open(k)).keys()).map(r => new URL(r.url).pathname) : []; })`);
@@ -269,6 +270,61 @@ const expectedFaces = Object.values(FAMILIES).flatMap((fam) => ['400', '700'].ma
 check('Las 8 caras locales (4 familias × 400/700) quedan cargadas en document.fonts', expectedFaces.every((x) => loadedFaces.includes(x)), `${loadedFaces.length} cargadas`);
 await ev(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Restablecer valores').click()`);
 
+// ---------- Fase D: presets persistentes (IndexedDB real) ----------
+console.log('\n== D. Presets persistentes ==');
+const goTo = (label) => ev(`[...document.querySelectorAll('nav button')].find((b) => b.querySelector('.long')?.textContent.trim() === ${JSON.stringify(label)}).click()`);
+const presetBtn = (name, label) => ev(`[...document.querySelectorAll('.list li')].find((li) => li.querySelector('h3').textContent.trim() === ${JSON.stringify(name)}).querySelectorAll('button')`
+  + `.forEach((b) => { if (b.textContent.trim() === ${JSON.stringify(label)}) b.click(); }); true`);
+const presetNames = () => ev(`[...document.querySelectorAll('.list li h3')].map((h) => h.textContent.trim())`);
+const selectsAre = (id, bold) => `(() => { const s = [...document.querySelectorAll('.panel select')]; const c = [...document.querySelectorAll('.panel input[type=checkbox]')]; return s.length > 0 && s.every((x) => x.value === ${JSON.stringify(id)}) && c.every((x) => x.checked === ${bold}); })()`;
+const PRESET = 'Preset verify';
+
+await setAll('roboto', true);
+await sleep(300);
+await goTo('Presets');
+check('Presets abre y muestra el preset de fábrica de solo lectura', await waitFor(`document.querySelector('.list li') !== null`, 5000) && (await presetNames())[0] === 'De fábrica');
+const factoryButtons = await ev(`[...document.querySelectorAll('.list li')[0].querySelectorAll('button')].map((b) => b.textContent.trim())`);
+check('El de fábrica no ofrece Editar, Eliminar ni Predeterminado', !factoryButtons.some((t) => ['Editar', 'Eliminar', 'Usar como predeterminado'].includes(t)), JSON.stringify(factoryButtons));
+await ev(`(() => { const i = document.querySelector('.save input[type=text]'); i.value = ${JSON.stringify(PRESET)}; i.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+await sleep(200);
+await ev(`document.querySelector('.save button[type=submit]').click()`);
+check('Guardar la configuración actual crea el preset', await waitFor(`[...document.querySelectorAll('.list li h3')].some((h) => h.textContent.trim() === ${JSON.stringify(PRESET)})`, 5000));
+check('IndexedDB real: la base «photoguard-family» tiene las tablas presets, assets y meta', JSON.stringify(await ev(`new Promise((res, rej) => { const r = indexedDB.open('photoguard-family'); r.onsuccess = () => { const n = [...r.result.objectStoreNames].sort(); r.result.close(); res(n); }; r.onerror = rej; })`)) === JSON.stringify(['assets', 'meta', 'presets']));
+
+await goTo('Proteger');
+await waitFor(`document.querySelector('.protect')`, 3000);
+await ev(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Restablecer valores').click()`);
+check('Restablecer vuelve a los valores de fábrica (patrón Inter, emblema Montserrat en negrita)', await waitFor(`(() => { const s = [...document.querySelectorAll('.panel select')]; const c = [...document.querySelectorAll('.panel input[type=checkbox]')]; return s[0]?.value === 'inter' && s[1]?.value === 'montserrat' && c[0]?.checked === false && c[1]?.checked === true; })()`, 3000));
+await goTo('Presets');
+await waitFor(`document.querySelector('.list li')`, 3000);
+await presetBtn(PRESET, 'Aplicar');
+check('Aplicar muestra el aviso y ofrece ir a Proteger', await waitFor(`document.querySelector('.banner[role=status]')?.textContent.includes('aplicado')`, 5000));
+await goTo('Proteger');
+check('Aplicar actualizó el editor: Roboto en negrita (fontId y bold)', await waitFor(selectsAre('roboto', true), 5000));
+await ev(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Restablecer valores').click()`);
+
+await goTo('Presets');
+await waitFor(`document.querySelector('.list li')`, 3000);
+await presetBtn(PRESET, 'Usar como predeterminado');
+check('Elegir predeterminado muestra la insignia', await waitFor(`[...document.querySelectorAll('.list li')].some((li) => li.querySelector('h3').textContent.trim() === ${JSON.stringify(PRESET)} && li.textContent.includes('Predeterminado'))`, 5000));
+
+await reload();
+await waitFor(`document.querySelector('.home')`, 5000);
+await goTo('Presets');
+check('Tras recargar, el preset sigue guardado', await waitFor(`[...document.querySelectorAll('.list li h3')].some((h) => h.textContent.trim() === ${JSON.stringify(PRESET)})`, 5000));
+await goTo('Proteger');
+check('Tras recargar, el predeterminado elegido se aplica solo al abrir la app', await waitFor(selectsAre('roboto', true), 5000));
+await goTo('Presets');
+await waitFor(`document.querySelector('.list li')`, 3000);
+await presetBtn(PRESET, 'Duplicar');
+check('Duplicar crea una copia independiente', await waitFor(`[...document.querySelectorAll('.list li h3')].some((h) => h.textContent.trim() === ${JSON.stringify(PRESET + ' (copia)')})`, 5000));
+await presetBtn(PRESET + ' (copia)', 'Eliminar');
+check('Eliminar pide confirmación', await waitFor(`document.querySelector('[role=alertdialog]') !== null`, 3000));
+await ev(`document.querySelector('[role=alertdialog] .btn.danger').click()`);
+check('Confirmar elimina la copia (queda el original)', await waitFor(`![...document.querySelectorAll('.list li h3')].some((h) => h.textContent.trim().endsWith('(copia)'))`, 5000) && (await presetNames()).includes(PRESET));
+await goTo('Inicio');
+check('Tras usar Presets, el editor sigue operativo (importar foto y vista previa)', await importPhoto());
+
 // ---------- Fase B: actualización ----------
 console.log('\n== B. Actualización (nueva versión desplegada) ==');
 await ev(`(async () => {
@@ -315,6 +371,8 @@ const survived = await ev(`(async () => ({
   model: !!(await (await caches.open('photoguard-models-v1')).match('/modelo-falso.onnx'))
 }))()`);
 check('IndexedDB, localStorage y caché de modelos sobreviven a la actualización', survived.ls === 'vive' && survived.idb === 'preset-de-prueba' && survived.model === true, JSON.stringify(survived));
+await goTo('Presets');
+check('Los presets guardados (IndexedDB de la app) sobreviven a la actualización', await waitFor(`[...document.querySelectorAll('.list li h3')].some((h) => h.textContent.trim() === ${JSON.stringify(PRESET)})`, 5000));
 
 // ---------- Resumen ----------
 const real = consoleErrors.filter((e) => !/Failed to load resource.*(404|offline)|ERR_INTERNET_DISCONNECTED/i.test(e));

@@ -114,6 +114,13 @@ class Workspace {
     }
   }
 
+  /**
+   * Reemplaza la configuración del editor (la usan los presets). Vista previa y exportación leen
+   * este mismo estado, así que no hay un segundo sistema de configuración que sincronizar.
+   */
+  applyConfig(config: ProtectionConfig): void {
+    this.config = structuredClone(config);
+  }
   resetConfig(): void {
     this.config = structuredClone(DEFAULT_CONFIG);
   }

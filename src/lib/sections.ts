@@ -51,14 +51,10 @@ export const TOOLS: readonly SectionDef[] = [
     id: 'presets',
     label: 'Presets',
     shortLabel: 'Presets',
-    ready: false,
+    ready: true,
     icon: '<path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/>',
-    summary: 'Guardar y reutilizar tus configuraciones.',
-    planned: [
-      'Guardar la configuración actual con nombre (IndexedDB).',
-      'Preset predeterminado y presets ilimitados (según el almacenamiento disponible).',
-      'Exportar e importar presets entre dispositivos (ZIP + JSON).'
-    ]
+    summary: 'Guardar, aplicar y gestionar tus configuraciones de marca de agua.',
+    planned: ['Exportar e importar presets entre dispositivos (ZIP + JSON).']
   },
   {
     id: 'batch',
