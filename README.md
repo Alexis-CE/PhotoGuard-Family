@@ -18,34 +18,12 @@ fotos se procesan en el dispositivo y no se envían a ningún servidor. Sin cuen
 | **PWA** | ✅ Manifest, iconos, offline, avisos de actualización |
 | Marcas invisibles, quitar fondo, IA, firmas | ❌ No incluido todavía |
 
-## Ejecutar
-
-```bash
-npm install
-npm run dev          # servidor local (http://localhost:5173). El Service Worker NO corre en dev.
-npm run check        # TypeScript + svelte-check
-npm test             # pruebas (Vitest)
-npm run build        # genera dist/ (con sw.js y manifest)
-npm run preview      # sirve dist/ para probar la PWA
-npm run serve:pages  # sirve dist/ bajo /photoguard-family/ (simula GitHub Pages)
-npm run verify:pwa   # build + verificación en un Chrome real (instalabilidad, offline, actualizaciones)
-npm run icons        # regenera los iconos PNG (public/icons)
-npm run fonts        # re-copia las fuentes WOFF2 y sus licencias desde @fontsource (public/fonts)
-```
-
 Requiere Node 20.19+ o 22.12+.
 
-## Despliegue en GitHub Pages
-
-`vite.config.ts` usa `base: './'`: todo (assets, manifest, Service Worker) es relativo y funciona bajo
-cualquier nombre de repo. El workflow `.github/workflows/deploy.yml` compila y publica en cada push a
-`main`. En GitHub: *Settings → Pages → Source: GitHub Actions*.
 
 ## Documentación
 
-- [docs/PWA.md](docs/PWA.md): instalación por plataforma, offline, actualizaciones, limitaciones y compatibilidad.
-- [docs/DECISIONS.md](docs/DECISIONS.md): decisiones técnicas.
-- [LICENSES/](LICENSES/README.md): licencias de dependencias; [LICENSES/FONTS.md](LICENSES/FONTS.md): tipografías.
+- [LICENSES/](LICENSES/README.md): licencias de dependencias; [LICENSES/FONTS.md
 
 ## Estructura
 
