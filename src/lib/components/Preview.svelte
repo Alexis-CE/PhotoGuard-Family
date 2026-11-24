@@ -55,19 +55,39 @@
     width: 100%;
     height: 100%;
     display: grid;
+    /* Pista acotada al contenedor: así el max-height en % del canvas tiene una referencia definida. */
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
     place-items: center;
     min-height: 0;
     min-width: 0;
   }
 
+  /*
+   * Solo presentación: el búfer del canvas (width/height) no cambia, y la exportación usa su propio
+   * canvas a resolución completa. Con ancho y alto en auto, las proporciones se conservan.
+   */
   canvas {
     display: block;
     width: auto;
     height: auto;
     max-width: 100%;
     max-height: 100%;
+    object-fit: contain;
     border-radius: 4px;
     box-shadow: 0 0 0 1px #000, 0 14px 40px rgba(0, 0, 0, 0.55);
+  }
+
+  @media (max-width: 860px) {
+    .frame {
+      height: auto;
+      grid-template-rows: auto;
+    }
+
+    canvas {
+      max-height: min(42vh, 440px); /* respaldo sin soporte de dvh */
+      max-height: min(42dvh, 440px);
+    }
   }
 
   .fail {

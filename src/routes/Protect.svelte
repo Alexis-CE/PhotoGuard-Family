@@ -2,6 +2,7 @@
   import ControlPanel from '$lib/components/ControlPanel.svelte';
   import FilePicker from '$lib/components/FilePicker.svelte';
   import Preview from '$lib/components/Preview.svelte';
+  import QuickControls from '$lib/components/QuickControls.svelte';
   import { workspace as ws } from '$lib/state/workspace.svelte';
 
   let picker = $state<ReturnType<typeof FilePicker> | null>(null);
@@ -18,19 +19,9 @@
 <FilePicker bind:this={picker} onpick={(file) => void ws.importFile(file)} />
 
 <div class="protect">
-  <div
-    class="stage"
-    class:dragging
-    role="region"
-    aria-label="Área de trabajo: vista previa"
-    ondragover={(e) => {
-      e.preventDefault();
-      dragging = true;
-    }}
-    ondragleave={() => (dragging = false)}
-    ondrop={onDrop}
-  >
-    <div class="toolbar">
+  <div class="workspace">
+    <!-- Cabecera fija: Exportar siempre al alcance, aunque se desplacen los controles. -->
+    <header class="bar">
       <p class="file">
         {#if ws.photo}
           <strong>{ws.photo.name}</strong>
@@ -39,19 +30,20 @@
           <span>Sin fotografía</span>
         {/if}
       </p>
-      <div class="actions">
-        <button type="button" class="btn" onclick={() => picker?.open('gallery')} disabled={ws.loading}>Galería</button>
-        <button type="button" class="btn" onclick={() => picker?.open('camera')} disabled={ws.loading}>Cámara</button>
-        <button type="button" class="btn" onclick={() => picker?.open('files')} disabled={ws.loading}>Archivos</button>
-        <button
-          type="button"
-          class="btn primary"
-          onclick={() => void ws.exportCurrent()}
-          disabled={!ws.photo || ws.exporting || ws.loading}
-        >
-          {ws.exporting ? 'Exportando…' : 'Exportar'}
-        </button>
-      </div>
+      <button
+        type="button"
+        class="btn primary"
+        onclick={() => void ws.exportCurrent()}
+        disabled={!ws.photo || ws.exporting || ws.loading}
+      >
+        {ws.exporting ? 'Exportando…' : 'Exportar'}
+      </button>
+    </header>
+
+    <div class="pick" role="group" aria-label="Elegir fotografía">
+      <button type="button" class="btn" onclick={() => picker?.open('gallery')} disabled={ws.loading}>Galería</button>
+      <button type="button" class="btn" onclick={() => picker?.open('camera')} disabled={ws.loading}>Cámara</button>
+      <button type="button" class="btn" onclick={() => picker?.open('files')} disabled={ws.loading}>Archivos</button>
     </div>
 
     {#if ws.error}
@@ -67,28 +59,38 @@
       </div>
     {/if}
 
-    <div class="canvas-area">
-      {#if ws.photo}
-        <Preview />
-        {#if ws.loading}<div class="veil">Abriendo foto…</div>{/if}
-      {:else if ws.loading}
-        <div class="empty"><div class="spinner" aria-hidden="true"></div><p>Abriendo foto…</p></div>
-      {:else}
-        <div class="empty">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="3" y="5" width="18" height="14" rx="2" />
-            <circle cx="9" cy="11" r="2" />
-            <path d="M21 16l-5-5-8 8" />
-          </svg>
-          <h2>Abre una fotografía</h2>
-          <p>Arrástrala aquí o elígela de tu dispositivo.<br />JPG, JFIF, PNG o WEBP · se procesa sin salir de este equipo.</p>
-          <div class="pick">
-            <button type="button" class="btn primary" onclick={() => picker?.open('gallery')}>Galería</button>
-            <button type="button" class="btn" onclick={() => picker?.open('camera')}>Cámara</button>
-            <button type="button" class="btn" onclick={() => picker?.open('files')}>Archivos</button>
+    <QuickControls />
+
+    <div
+      class="stage"
+      class:dragging
+      role="region"
+      aria-label="Área de trabajo: vista previa"
+      ondragover={(e) => {
+        e.preventDefault();
+        dragging = true;
+      }}
+      ondragleave={() => (dragging = false)}
+      ondrop={onDrop}
+    >
+      <div class="canvas-area">
+        {#if ws.photo}
+          <Preview />
+          {#if ws.loading}<div class="veil">Abriendo foto…</div>{/if}
+        {:else if ws.loading}
+          <div class="empty"><div class="spinner" aria-hidden="true"></div><p>Abriendo foto…</p></div>
+        {:else}
+          <div class="empty">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <circle cx="9" cy="11" r="2" />
+              <path d="M21 16l-5-5-8 8" />
+            </svg>
+            <h2>Abre una fotografía</h2>
+            <p>Elige una con Galería, Cámara o Archivos, o arrástrala aquí.<br />JPG, JFIF, PNG o WEBP · se procesa sin salir de este equipo.</p>
           </div>
-        </div>
-      {/if}
+        {/if}
+      </div>
     </div>
   </div>
 
@@ -101,32 +103,26 @@
   .protect {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-rows: minmax(0, 1fr);
     height: 100%;
     min-height: 0;
   }
 
-  .stage {
+  .workspace {
     display: flex;
     flex-direction: column;
     min-width: 0;
     min-height: 0;
     padding: 14px 16px 16px;
     gap: 10px;
-    background:
-      radial-gradient(1200px 600px at 50% 0%, #17181c 0%, var(--bg) 70%);
-    transition: box-shadow 0.15s;
+    background: radial-gradient(1200px 600px at 50% 0%, #17181c 0%, var(--bg) 70%);
   }
 
-  .stage.dragging {
-    box-shadow: inset 0 0 0 2px var(--accent);
-  }
-
-  .toolbar {
+  .bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    flex-wrap: wrap;
   }
 
   .file {
@@ -146,17 +142,10 @@
     max-width: 38ch;
   }
 
-  .actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   .pick {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
   }
 
   .banner {
@@ -187,11 +176,27 @@
     font-size: 20px;
   }
 
+  .stage {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    border-radius: 12px;
+    transition: box-shadow 0.15s;
+  }
+
+  .stage.dragging {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
   .canvas-area {
     position: relative;
     flex: 1;
     min-height: 0;
     display: grid;
+    /* Pista acotada al espacio disponible: sin esto la foto (alto intrínseco) empuja el diseño. */
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .empty {
@@ -253,33 +258,53 @@
     border-left: 1px solid var(--border);
   }
 
+  /*
+   * Móvil: una sola columna que se desplaza. La barra de navegación inferior es una fila de la
+   * rejilla de App (no se superpone), así que basta con dejar holgura al final del contenido.
+   */
   @media (max-width: 860px) {
     .protect {
-      display: flex;
-      flex-direction: column;
+      display: block;
+      grid-template-rows: none;
       height: 100%;
       overflow-y: auto;
+      overscroll-behavior: contain;
     }
 
-    /* La vista previa queda fija arriba mientras se desplazan los controles. */
-    .stage {
+    .workspace {
+      padding: 0 12px 4px;
+      gap: 10px;
+      background: var(--bg);
+    }
+
+    .bar {
       position: sticky;
       top: 0;
-      z-index: 2;
-      flex: none;
-      height: 56dvh;
+      z-index: 3;
+      margin: 0 -12px;
       padding: 10px 12px;
       background: var(--bg);
       border-bottom: 1px solid var(--border);
     }
 
+    .file strong {
+      max-width: 22ch;
+    }
+
+    /* El contenedor se ajusta a la imagen (ver Preview): sin alto fijo. */
+    .stage {
+      flex: none;
+    }
+
+    .canvas-area {
+      flex: none;
+      grid-template-rows: auto;
+    }
+
     .side {
       overflow: visible;
       border-left: 0;
-    }
-
-    .file strong {
-      max-width: 22ch;
+      padding-bottom: 16px;
     }
   }
 </style>
