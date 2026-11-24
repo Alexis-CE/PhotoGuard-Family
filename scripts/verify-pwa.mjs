@@ -425,6 +425,37 @@ check('IndexedDB, localStorage y caché de modelos sobreviven a la actualizació
 await goTo('Presets');
 check('Los presets guardados (IndexedDB de la app) sobreviven a la actualización', await waitFor(`[...document.querySelectorAll('.list li h3')].some((h) => h.textContent.trim() === ${JSON.stringify(PRESET)})`, 5000));
 
+// ---------- Fase F: presets desde Proteger ----------
+console.log('\n== F. Presets desde Proteger ==');
+const PRESET_F = 'Desde Proteger';
+const clickButton = (label) => ev(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === ${JSON.stringify(label)}).click()`);
+const activeMode = `document.querySelector('.quick .segmented label.active')?.textContent.trim()`;
+await goTo('Proteger');
+check('Proteger muestra el selector de presets, Aplicar y Guardar como preset', await waitFor(`document.querySelector('.presetbar select') !== null && [...document.querySelectorAll('.presetbar button')].some((b) => b.textContent.trim() === 'Aplicar') && [...document.querySelectorAll('.presetbar button')].some((b) => b.textContent.trim() === 'Guardar como preset')`, 5000));
+await ev(`[...document.querySelectorAll('.quick .segmented label')].find((l) => l.textContent.trim() === 'Emblema').click()`);
+await clickButton('Guardar como preset');
+await waitFor(`document.querySelector('.saveform input[type=text]')`, 3000);
+await ev(`(() => { const i = document.querySelector('.saveform input[type=text]'); i.value = ${JSON.stringify(PRESET_F)}; i.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+await ev(`document.querySelector('.saveform button[type=submit]').click()`);
+check('Guardar como preset desde Proteger lo añade al selector', await waitFor(`[...document.querySelectorAll('.presetbar option')].some((o) => o.textContent.includes(${JSON.stringify(PRESET_F)}))`, 5000));
+const stored = await ev(`(async () => {
+  const db = await new Promise((res, rej) => { const r = indexedDB.open('photoguard-family'); r.onsuccess = () => res(r.result); r.onerror = rej; });
+  const all = await new Promise((res, rej) => { const q = db.transaction('presets').objectStore('presets').getAll(); q.onsuccess = () => res(q.result); q.onerror = rej; });
+  const rec = all.find((x) => x.name === ${JSON.stringify(PRESET_F)});
+  return rec ? { mode: rec.config.mode, keys: Object.keys(rec), size: JSON.stringify(rec).length } : null;
+})()`);
+check('El preset guardado contiene solo configuración (sin fotografía)', stored && stored.mode === 'emblem' && !stored.keys.some((k) => /photo|image|blob|bitmap|file/i.test(k)) && stored.size < 4000, JSON.stringify(stored));
+await reload();
+await waitFor(`document.querySelector('.home')`, 5000);
+await goTo('Proteger');
+await waitFor(`document.querySelector('.presetbar select')`, 5000);
+check('Tras recargar el preset sigue en el selector', await waitFor(`[...document.querySelectorAll('.presetbar option')].some((o) => o.textContent.includes(${JSON.stringify(PRESET_F)}))`, 5000));
+check('Tras recargar el modo vuelve al de fábrica (Híbrido)', (await ev(activeMode)) === 'Híbrido');
+await ev(`(() => { const s = document.querySelector('.presetbar select'); const o = [...s.options].find((x) => x.textContent.includes(${JSON.stringify(PRESET_F)})); s.value = o.value; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+await sleep(200);
+await clickButton('Aplicar');
+check('Aplicar desde Proteger restaura la configuración guardada (modo Emblema)', await waitFor(`${activeMode} === 'Emblema'`, 5000));
+check('Aplicar muestra confirmación', await waitFor(`document.querySelector('.presetbar .msg')?.textContent.includes('aplicado')`, 3000));
 // ---------- Resumen ----------
 const real = consoleErrors.filter((e) => !/Failed to load resource.*(404|offline)|ERR_INTERNET_DISCONNECTED/i.test(e));
 console.log('\n== Errores de consola ==');
