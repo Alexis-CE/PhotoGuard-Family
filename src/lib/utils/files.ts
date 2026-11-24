@@ -2,8 +2,24 @@ export type ImageKind = 'jpeg' | 'png' | 'webp';
 
 /** `.jfif` es un JPEG con contenedor JFIF: se decodifica igual que un .jpg. */
 export const ACCEPTED_EXTENSIONS = ['jpg', 'jpeg', 'jfif', 'png', 'webp'] as const;
-/** `image/*` por compatibilidad entre selectores; `.jfif` explícito porque algunos sistemas no lo asocian a imagen. */
-export const ACCEPT_ATTRIBUTE = 'image/*,.jfif';
+/**
+ * Galería: SOLO tipos MIME, sin extensiones y sin `capture`. Con extensiones en `accept`, Chrome Android
+ * abre el administrador de archivos en vez del selector de fotos. La firma binaria sigue validando todo.
+ */
+export const ACCEPT_GALLERY = 'image/jpeg,image/png,image/webp';
+/** Cámara: cualquier imagen; `capture` (ver IMPORT_INPUTS) es solo una sugerencia al navegador. */
+export const ACCEPT_CAMERA = 'image/*';
+/** Archivos: administrador de archivos; con extensiones explícitas porque algunos sistemas no asocian `.jfif` a imagen. */
+export const ACCEPT_FILES = '.jpg,.jpeg,.jfif,.png,.webp,image/jpeg,image/png,image/webp';
+
+export type ImageSource = 'gallery' | 'camera' | 'files';
+
+/** Un `<input type="file">` independiente por origen. Solo la cámara lleva `capture`. */
+export const IMPORT_INPUTS: Readonly<Record<ImageSource, { accept: string; capture?: 'environment' }>> = {
+  gallery: { accept: ACCEPT_GALLERY },
+  camera: { accept: ACCEPT_CAMERA, capture: 'environment' },
+  files: { accept: ACCEPT_FILES }
+};
 /** Bytes que se leen del inicio del archivo para comprobar su firma. */
 export const SNIFF_BYTES = 12;
 

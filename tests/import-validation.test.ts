@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ImageImportError, loadPhoto } from '../src/lib/engines/image';
 import {
-  ACCEPT_ATTRIBUTE,
+  ACCEPT_CAMERA,
+  ACCEPT_FILES,
+  ACCEPT_GALLERY,
   buildOutputName,
+  IMPORT_INPUTS,
   kindFromMime,
   SNIFF_BYTES,
   validateFileMeta,
@@ -55,9 +58,29 @@ async function importError(file: File): Promise<ImageImportError> {
   throw new Error(`Se esperaba rechazo para ${file.name}`);
 }
 
-describe('selector de archivos', () => {
-  it('declara image/* y .jfif', () => {
-    expect(ACCEPT_ATTRIBUTE).toBe('image/*,.jfif');
+describe('selectores de importación (galería, cámara, archivos)', () => {
+  it('galería: solo MIME (sin extensiones) y sin capture, para que Android abra el selector de fotos', () => {
+    expect(ACCEPT_GALLERY).toBe('image/jpeg,image/png,image/webp');
+    expect(ACCEPT_GALLERY).not.toMatch(/(^|,)\./);
+    expect(IMPORT_INPUTS.gallery).toEqual({ accept: ACCEPT_GALLERY });
+    expect('capture' in IMPORT_INPUTS.gallery).toBe(false);
+  });
+
+  it('cámara: image/* y capture="environment" como sugerencia', () => {
+    expect(IMPORT_INPUTS.camera).toEqual({ accept: ACCEPT_CAMERA, capture: 'environment' });
+    expect(ACCEPT_CAMERA).toBe('image/*');
+  });
+
+  it('archivos: JPG, JPEG, JFIF, PNG y WEBP por extensión y por MIME, sin capture', () => {
+    for (const token of ['.jpg', '.jpeg', '.jfif', '.png', '.webp', 'image/jpeg', 'image/png', 'image/webp']) {
+      expect(ACCEPT_FILES.split(',')).toContain(token);
+    }
+    expect('capture' in IMPORT_INPUTS.files).toBe(false);
+  });
+
+  it('solo la cámara lleva capture', () => {
+    const withCapture = Object.entries(IMPORT_INPUTS).filter(([, input]) => 'capture' in input);
+    expect(withCapture.map(([source]) => source)).toEqual(['camera']);
   });
 });
 

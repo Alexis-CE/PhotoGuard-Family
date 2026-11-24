@@ -40,9 +40,9 @@
         {/if}
       </p>
       <div class="actions">
-        <button type="button" class="btn" onclick={() => picker?.open()} disabled={ws.loading}>
-          {ws.photo ? 'Cambiar foto' : 'Abrir foto'}
-        </button>
+        <button type="button" class="btn" onclick={() => picker?.open('gallery')} disabled={ws.loading}>Galería</button>
+        <button type="button" class="btn" onclick={() => picker?.open('camera')} disabled={ws.loading}>Cámara</button>
+        <button type="button" class="btn" onclick={() => picker?.open('files')} disabled={ws.loading}>Archivos</button>
         <button
           type="button"
           class="btn primary"
@@ -82,7 +82,11 @@
           </svg>
           <h2>Abre una fotografía</h2>
           <p>Arrástrala aquí o elígela de tu dispositivo.<br />JPG, JFIF, PNG o WEBP · se procesa sin salir de este equipo.</p>
-          <button type="button" class="btn primary" onclick={() => picker?.open()}>Elegir foto</button>
+          <div class="pick">
+            <button type="button" class="btn primary" onclick={() => picker?.open('gallery')}>Galería</button>
+            <button type="button" class="btn" onclick={() => picker?.open('camera')}>Cámara</button>
+            <button type="button" class="btn" onclick={() => picker?.open('files')}>Archivos</button>
+          </div>
         </div>
       {/if}
     </div>
@@ -145,6 +149,14 @@
   .actions {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .pick {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .banner {

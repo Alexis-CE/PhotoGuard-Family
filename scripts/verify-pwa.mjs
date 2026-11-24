@@ -340,7 +340,15 @@ const pickFile = (name, type, b64) => ev(`(async () => {
 const fileLabel = `document.querySelector('.file strong')?.textContent`;
 const canvasB64 = (mime) => ev(`(async () => { const c = document.createElement('canvas'); c.width = 64; c.height = 48; const g = c.getContext('2d'); g.fillStyle = '#39c'; g.fillRect(0, 0, 64, 48); const b = await new Promise((r) => c.toBlob(r, ${JSON.stringify(mime)}, 0.9)); return window.__b64(b); })()`);
 
-check('El selector admite image/* y .jfif', (await ev(`document.querySelector('input[type=file]').accept`)) === 'image/*,.jfif');
+const pickers = await ev(`[...document.querySelectorAll('input[type=file]')].map((i) => ({ accept: i.accept, capture: i.getAttribute('capture') }))`);
+check(
+  'Selectores independientes: galería (solo MIME, sin capture), cámara (capture) y archivos (.jfif)',
+  pickers.length === 3 &&
+    pickers[0].accept === 'image/jpeg,image/png,image/webp' && pickers[0].capture === null &&
+    pickers[1].accept === 'image/*' && pickers[1].capture === 'environment' &&
+    pickers[2].accept.includes('.jfif') && pickers[2].capture === null,
+  JSON.stringify(pickers)
+);
 
 // JFIF real (JPEG con EXIF y orientación 6) con MIME vacío, como lo entrega Windows a veces.
 await pickFile('IMG_exif.jfif', '', Buffer.from(withExif).toString('base64'));
